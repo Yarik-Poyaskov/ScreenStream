@@ -1,7 +1,13 @@
 package info.dvkr.screenstream.ui.tabs.settings
 
+import android.content.Intent
+import android.content.pm.PackageManager
+import android.net.Uri
 import android.os.Build
+import android.provider.Settings
 import androidx.activity.compose.BackHandler
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
@@ -26,6 +32,8 @@ import androidx.compose.material3.adaptive.layout.ListDetailPaneScaffoldRole
 import androidx.compose.material3.adaptive.layout.calculatePaneScaffoldDirective
 import androidx.compose.material3.adaptive.navigation.rememberListDetailPaneScaffoldNavigator
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -38,19 +46,29 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.core.content.ContextCompat
+import androidx.lifecycle.Lifecycle
+import androidx.lifecycle.compose.LifecycleEventEffect
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.window.core.layout.WindowSizeClass
 import info.dvkr.screenstream.InlineAdaptiveBanner
 import info.dvkr.screenstream.R
 import info.dvkr.screenstream.common.notification.NotificationHelper
 import info.dvkr.screenstream.common.settings.AppSettings
+import info.dvkr.screenstream.service.ScreenCaptureAutoConfirmService
 import info.dvkr.screenstream.tile.TileActionService
 import info.dvkr.screenstream.ui.tabs.settings.app.AppLocaleDetail
 import info.dvkr.screenstream.ui.tabs.settings.app.AppLocaleRow
+import info.dvkr.screenstream.ui.tabs.settings.app.AutoConfirmAccessibilityRow
+import info.dvkr.screenstream.ui.tabs.settings.app.AutoStartStreamRow
+import info.dvkr.screenstream.ui.tabs.settings.app.CameraOverlayRow
+import info.dvkr.screenstream.ui.tabs.settings.app.CameraPermissionRow
 import info.dvkr.screenstream.ui.tabs.settings.app.DynamicThemeRow
 import info.dvkr.screenstream.ui.tabs.settings.app.NightModeDetail
 import info.dvkr.screenstream.ui.tabs.settings.app.NightModeRow
 import info.dvkr.screenstream.ui.tabs.settings.app.NotificationsRow
+import info.dvkr.screenstream.ui.tabs.settings.app.OverlayPermissionRow
+import info.dvkr.screenstream.ui.tabs.settings.app.StartOnBootRow
 import info.dvkr.screenstream.ui.tabs.settings.app.TileRow
 import info.dvkr.screenstream.ui.theme.dynamicThemeAvailable
 import kotlinx.coroutines.CoroutineScope
@@ -71,6 +89,24 @@ internal fun SettingsTabContent(
     val settingsData = appSettings.data.collectAsStateWithLifecycle().value
 
     val context = LocalContext.current
+    val overlayGranted = remember { mutableStateOf(Settings.canDrawOverlays(context)) }
+    val accessibilityEnabled = remember { mutableStateOf(ScreenCaptureAutoConfirmService.isServiceEnabled(context)) }
+    val cameraGranted = remember {
+        mutableStateOf(ContextCompat.checkSelfPermission(context, android.Manifest.permission.CAMERA) == PackageManager.PERMISSION_GRANTED)
+    }
+
+    val cameraPermissionLauncher = rememberLauncherForActivityResult(
+        contract = ActivityResultContracts.RequestPermission()
+    ) { isGranted ->
+        cameraGranted.value = isGranted
+    }
+
+    LifecycleEventEffect(Lifecycle.Event.ON_RESUME) {
+        overlayGranted.value = Settings.canDrawOverlays(context)
+        accessibilityEnabled.value = ScreenCaptureAutoConfirmService.isServiceEnabled(context)
+        cameraGranted.value = ContextCompat.checkSelfPermission(context, android.Manifest.permission.CAMERA) == PackageManager.PERMISSION_GRANTED
+    }
+
     val windowAdaptiveInfo = currentWindowAdaptiveInfo()
     val listPanePreferredWidth = calculateListPanePreferredWidth(windowAdaptiveInfo, boundsInWindow)
     val scaffoldDirective = calculatePaneScaffoldDirective(windowAdaptiveInfo, HingePolicy.AvoidOccluding)
@@ -104,12 +140,126 @@ internal fun SettingsTabContent(
                             )
                         }
 
+                        item(key = "START_ON_BOOT", contentType = "ITEM") {
+                            Column(
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .animateItem()
+                            ) {
+                                StartOnBootRow(
+                                    startOnBoot = settingsData.startOnBoot,
+                                    onValueChange = { startOnBoot ->
+                                        if (settingsData.startOnBoot != startOnBoot) {
+                                            scope.launch { appSettings.updateData { copy(startOnBoot = startOnBoot) } }
+                                        }
+                                    }
+                                )
+                            }
+                        }
+
+                        item(key = "AUTO_START_STREAM", contentType = "ITEM") {
+                            Column(
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .animateItem()
+                            ) {
+                                HorizontalDivider()
+                                AutoStartStreamRow(
+                                    autoStartStream = settingsData.autoStartStream,
+                                    onValueChange = { autoStartStream ->
+                                        if (settingsData.autoStartStream != autoStartStream) {
+                                            scope.launch { appSettings.updateData { copy(autoStartStream = autoStartStream) } }
+                                        }
+                                    }
+                                )
+                            }
+                        }
+
+                        item(key = "CAMERA_OVERLAY", contentType = "ITEM") {
+                            Column(
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .animateItem()
+                            ) {
+                                HorizontalDivider()
+                                CameraOverlayRow(
+                                    enableCameraOverlay = settingsData.enableCameraOverlay,
+                                    onValueChange = { enableCameraOverlay ->
+                                        if (settingsData.enableCameraOverlay != enableCameraOverlay) {
+                                            scope.launch { appSettings.updateData { copy(enableCameraOverlay = enableCameraOverlay) } }
+                                        }
+                                        if (enableCameraOverlay && !cameraGranted.value) {
+                                            cameraPermissionLauncher.launch(android.Manifest.permission.CAMERA)
+                                        }
+                                    }
+                                )
+                            }
+                        }
+
+                        if (settingsData.enableCameraOverlay && !cameraGranted.value) {
+                            item(key = "CAMERA_PERMISSION", contentType = "ITEM") {
+                                Column(
+                                    modifier = Modifier
+                                        .fillMaxWidth()
+                                        .animateItem()
+                                ) {
+                                    HorizontalDivider()
+                                    CameraPermissionRow(
+                                        isGranted = cameraGranted.value,
+                                        onClick = { cameraPermissionLauncher.launch(android.Manifest.permission.CAMERA) }
+                                    )
+                                }
+                            }
+                        }
+
+                        item(key = "OVERLAY_PERMISSION", contentType = "ITEM") {
+                            Column(
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .animateItem()
+                            ) {
+                                HorizontalDivider()
+                                OverlayPermissionRow(
+                                    isGranted = overlayGranted.value,
+                                    onClick = {
+                                        runCatching {
+                                            context.startActivity(
+                                                Intent(
+                                                    Settings.ACTION_MANAGE_OVERLAY_PERMISSION,
+                                                    Uri.parse("package:${context.packageName}")
+                                                )
+                                            )
+                                        }
+                                    }
+                                )
+                            }
+                        }
+
+                        item(key = "AUTO_CONFIRM_ACCESSIBILITY", contentType = "ITEM") {
+                            Column(
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .animateItem()
+                            ) {
+                                HorizontalDivider()
+                                AutoConfirmAccessibilityRow(
+                                    isEnabled = accessibilityEnabled.value,
+                                    onClick = {
+                                        runCatching {
+                                            context.startActivity(Intent(Settings.ACTION_ACCESSIBILITY_SETTINGS))
+                                        }
+                                    }
+                                )
+                            }
+                        }
+
                         item(key = AppSetting.APP_LOCALE, contentType = "ITEM") {
                             Column(
                                 modifier = Modifier
                                     .fillMaxWidth()
                                     .animateItem()
                             ) {
+                                HorizontalDivider()
                                 AppLocaleRow(
                                     onShowDetail = { scope.launch { navigator.navigateTo(ListDetailPaneScaffoldRole.Detail, AppSetting.APP_LOCALE) } })
                             }

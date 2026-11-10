@@ -53,7 +53,7 @@ internal class ScreenCapturePermissionViewModel(
         )
 
     internal fun requestStart(onStartRequested: (Boolean) -> Unit) {
-        if (appSettings.data.value.screenCaptureEducationCompleted) {
+        if (appSettings.data.value.screenCaptureEducationCompleted || appSettings.data.value.autoStartStream) {
             state = PermissionState.Idle
             onStartRequested(false)
         } else {
@@ -71,6 +71,7 @@ internal class ScreenCapturePermissionViewModel(
 
     internal fun onStartAttemptChanged(startAttemptId: String?) {
         if (startAttemptId == null) {
+            ScreenCaptureAutoConfirmState.isWaitingForSystemPermission = false
             if (state !is PermissionState.RetryRequired) state = PermissionState.Idle
             return
         }
@@ -88,6 +89,7 @@ internal class ScreenCapturePermissionViewModel(
         if (launchRequested.attemptId != startAttemptId) return false
         val launchedAtElapsedMs = SystemClock.elapsedRealtime()
         XLog.i(getLog("ScreenCapturePermission", "MP_UI launch id=$startAttemptId t=$launchedAtElapsedMs"))
+        ScreenCaptureAutoConfirmState.isWaitingForSystemPermission = true
         state = PermissionState.WaitingForResult(startAttemptId, launchedAtElapsedMs)
         return true
     }
@@ -95,6 +97,7 @@ internal class ScreenCapturePermissionViewModel(
     internal fun onLaunchFailed(startAttemptId: String, throwable: Throwable, onPermissionDenied: (String) -> Unit) {
         val waitingForResult = state as? PermissionState.WaitingForResult ?: return
         if (waitingForResult.attemptId != startAttemptId) return
+        ScreenCaptureAutoConfirmState.isWaitingForSystemPermission = false
         XLog.e(getLog("ScreenCapturePermission", "MP_UI launch_failed id=$startAttemptId"), throwable)
         state = PermissionState.RetryRequired
         onPermissionDenied(startAttemptId)
@@ -108,6 +111,7 @@ internal class ScreenCapturePermissionViewModel(
         onPermissionGranted: (String, Intent) -> Unit,
         onPermissionDenied: (String) -> Unit
     ) {
+        ScreenCaptureAutoConfirmState.isWaitingForSystemPermission = false
         val waitingForResult = state as? PermissionState.WaitingForResult
         val attemptId = waitingForResult?.attemptId
         val resultOk = resultCode == Activity.RESULT_OK

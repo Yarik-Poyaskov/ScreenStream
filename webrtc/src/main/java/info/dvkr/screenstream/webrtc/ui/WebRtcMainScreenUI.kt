@@ -37,8 +37,10 @@ import info.dvkr.screenstream.common.findActivity
 import info.dvkr.screenstream.common.getAppSettingsIntent
 import info.dvkr.screenstream.common.isPermissionGranted
 import info.dvkr.screenstream.common.notification.NotificationHelper
+import info.dvkr.screenstream.common.settings.AppSettings
 import info.dvkr.screenstream.common.ui.DoubleClickProtection
 import info.dvkr.screenstream.common.ui.get
+import info.dvkr.screenstream.common.ui.mediaprojection.ScreenCaptureAutoConfirmState
 import info.dvkr.screenstream.common.ui.mediaprojection.ScreenCapturePermissionFlow
 import info.dvkr.screenstream.common.ui.mediaprojection.rememberScreenCaptureStartRequester
 import info.dvkr.screenstream.common.shouldShowPermissionRationale
@@ -62,10 +64,12 @@ internal fun WebRtcMainScreenUI(
     onProjectionGranted: (startAttemptId: String, intent: Intent) -> Unit,
     modifier: Modifier = Modifier,
     webRtcSettings: WebRtcSettings = koinInject(),
+    appSettings: AppSettings = koinInject(),
     notificationHelper: NotificationHelper = koinInject()
 ) {
     val webRtcState = webRtcStateFlow.collectAsStateWithLifecycle()
     val webRtcSettingsState = webRtcSettings.data.collectAsStateWithLifecycle()
+    val appSettingsState = appSettings.data.collectAsStateWithLifecycle()
     val scope = rememberCoroutineScope()
     val screenCaptureStartRequester = rememberScreenCaptureStartRequester()
     val context = LocalContext.current
@@ -90,6 +94,20 @@ internal fun WebRtcMainScreenUI(
     }
     val updateSettings: (WebRtcSettings.Data.() -> WebRtcSettings.Data) -> Unit = { transform ->
         scope.launch { webRtcSettings.updateData(transform) }
+    }
+
+    LaunchedEffect(state.isBusy, state.isStreaming, state.waitingCastPermission, state.streamId, appSettingsState.value.autoStartStream) {
+        if (appSettingsState.value.autoStartStream &&
+            !ScreenCaptureAutoConfirmState.autoStartConsumedForSession &&
+            !state.isStreaming &&
+            !state.isBusy &&
+            state.streamId.isNotEmpty() &&
+            !state.waitingCastPermission &&
+            state.startAttemptId == null
+        ) {
+            ScreenCaptureAutoConfirmState.autoStartConsumedForSession = true
+            screenCaptureStartRequester.request()
+        }
     }
 
     BoxWithConstraints(modifier = modifier) {

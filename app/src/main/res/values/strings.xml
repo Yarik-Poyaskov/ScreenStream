@@ -60,11 +60,29 @@
     <string name="app_pref_tile_summary">Add application tile to Quick Settings</string>
 
     <string name="app_tab_about_app_version">Version: %1$s</string>
-    <string name="app_tab_about_developer_name">Developed by Dmytro Kryvoruchko</string>
+    <string name="app_tab_about_fork_developer_name">Fork maintained by Yaroslav Poyaskov</string>
+    <string name="app_tab_about_developer_name">Original developer: Dmytro Kryvoruchko (Upstream)</string>
     <string name="app_tab_about_rate_app">Rate app</string>
-    <string name="app_tab_about_app_sources">Application sources</string>
+    <string name="app_tab_about_app_sources">Fork source code (GitHub)</string>
+    <string name="app_tab_about_upstream_sources">Upstream source code (GitHub)</string>
     <string name="app_tab_about_terms_conditions">Terms and Conditions</string>
     <string name="app_tab_about_privacy_policy">Privacy policy</string>
     <string name="app_tab_about_privacy_options">Privacy options</string>
     <string name="app_tab_about_license">License</string>
+
+    <string name="app_pref_start_on_boot">Start on device boot</string>
+    <string name="app_pref_start_on_boot_summary">Automatically launch ScreenStream when the phone starts</string>
+    <string name="app_pref_auto_start_stream">Auto-start streaming</string>
+    <string name="app_pref_auto_start_stream_summary">Automatically start streaming with saved parameters</string>
+    <string name="app_pref_camera_overlay">Camera overlay</string>
+    <string name="app_pref_camera_overlay_summary">Show front camera preview over screen during streaming</string>
+    <string name="app_pref_camera_permission">Camera permission</string>
+    <string name="app_pref_camera_permission_summary_off">Required to display camera preview over screen (Tap to grant)</string>
+    <string name="app_pref_camera_permission_summary_on">Granted (camera overlay ready)</string>
+    <string name="app_pref_overlay_permission">Display over other apps</string>
+    <string name="app_pref_overlay_permission_summary_off">Required for automatic background start on Android 10–14+ (Tap to grant)</string>
+    <string name="app_pref_overlay_permission_summary_on">Enabled (allows automatic start on device boot)</string>
+    <string name="app_pref_auto_confirm_accessibility">ScreenStream Auto-Confirm</string>
+    <string name="app_pref_auto_confirm_accessibility_summary">Automatically confirm the system screen capture dialog on start (Tap to enable in Accessibility)</string>
+    <string name="app_pref_auto_confirm_accessibility_summary_on">Enabled (automatically confirms screen capture dialog)</string>
 </resources>

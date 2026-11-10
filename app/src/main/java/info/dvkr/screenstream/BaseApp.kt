@@ -67,11 +67,13 @@ public abstract class BaseApp : Application() {
             single { NotificationHelperImpl(get()) } bind (NotificationHelper::class)
         }
 
-        startKoin {
+        val koin = startKoin {
             allowOverride(false)
             androidContext(this@BaseApp)
             modules(defaultModule, *streamingModules)
-        }
+        }.koin
+
+        info.dvkr.screenstream.service.CameraOverlayController.init(this, koin.get())
     }
 
     private fun initLogger(isDebuggable: Boolean) {

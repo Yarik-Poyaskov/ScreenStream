@@ -391,6 +391,7 @@ internal class MjpegStreamingService(
                 )
 
                 if (newInterfaces.isNotEmpty()) {
+                    if (currentError is MjpegError.AddressNotFoundException) currentError = null
                     sendEvent(InternalEvent.StartServer(newInterfaces))
                 } else {
                     if (event.attempt < 3) {
@@ -399,7 +400,8 @@ internal class MjpegStreamingService(
                         netInterfaces = emptyList()
                         clients = emptyList()
                         slowClients = emptyList()
-                        currentError = MjpegError.AddressNotFoundException()
+                        if (!isStreaming) currentError = MjpegError.AddressNotFoundException()
+                        sendEvent(InternalEvent.DiscoverAddress(event.reason, event.attempt + 1), 3000)
                     }
                 }
             }
@@ -420,6 +422,7 @@ internal class MjpegStreamingService(
 
                 if (isStreaming.not() && mjpegSettings.data.value.htmlShowPressStart) bitmapStateFlow.value = getStartBitmap()
 
+                if (currentError is MjpegError.AddressNotFoundException) currentError = null
                 netInterfaces = event.interfaces
                 pendingServer = false
             }
@@ -468,7 +471,8 @@ internal class MjpegStreamingService(
                     XLog.i(getLog("StartStream", "Permission already pending id=${pendingStartAttemptId ?: "none"}"))
                     return
                 }
-                if (pendingServer || currentError != null || isStreaming) {
+                val blockingError = currentError != null && currentError !is MjpegError.AddressNotFoundException
+                if (blockingError || isStreaming) {
                     XLog.i(getLog("StartStream", "Not ready. pendingServer=$pendingServer isStreaming=$isStreaming error=${currentError != null}"))
                     return
                 }
@@ -533,16 +537,6 @@ internal class MjpegStreamingService(
                         "SP_TRACE route=preflight_v1 stage=async_start startAttemptId=${event.startAttemptId} pendingServer=$pendingServer isStreaming=$isStreaming cachedIntent=${mediaProjectionIntent != null}"
                     )
                 )
-
-                if (pendingServer) {
-                    clearPreparedProjectionStartIfNeeded(event.foregroundStartProcessed, event.foregroundStartError)
-                    pendingStartAttemptId = null
-                    foregroundPreflightStartAttemptId = null
-                    sessionAnalyticsTracker.onStartFailed(StartFailGroup.UNKNOWN)
-                    val cause = IllegalStateException("StartProjection while server pending")
-                    XLog.w(getLog("MjpegEvent.StartProjection", "Server pending"), cause)
-                    return
-                }
 
                 if (isStreaming) {
                     clearPreparedProjectionStartIfNeeded(event.foregroundStartProcessed, event.foregroundStartError)
@@ -746,11 +740,13 @@ internal class MjpegStreamingService(
             }
 
             is InternalEvent.RestartServer -> {
-                if (mjpegSettings.data.value.stopOnConfigurationChange) stopStream("ConfigurationChange")
+                if (mjpegSettings.data.value.stopOnConfigurationChange) {
+                    stopStream("ConfigurationChange")
+                    pendingStartAttemptId = null
+                    foregroundPreflightStartAttemptId = null
+                    waitingForPermission = false
+                }
 
-                pendingStartAttemptId = null
-                foregroundPreflightStartAttemptId = null
-                waitingForPermission = false
                 if (pendingServer) {
                     XLog.d(getLog("processEvent", "RestartServer: No running server."))
                     if (currentError is MjpegError.AddressNotFoundException) currentError = null
@@ -875,8 +871,9 @@ internal class MjpegStreamingService(
     // Inline Only
     @Suppress("NOTHING_TO_INLINE")
     private inline fun publishState() {
+        val blockingError = currentError != null && currentError !is MjpegError.AddressNotFoundException
         val state = MjpegState(
-            isBusy = pendingServer || destroyPending || pendingStartAttemptId != null || currentError != null,
+            isBusy = (!isStreaming && pendingServer && currentError !is MjpegError.AddressNotFoundException) || destroyPending || pendingStartAttemptId != null || blockingError,
             serverNetInterfaces = netInterfaces.map {
                 MjpegState.ServerNetInterface(it.label, it.buildUrl(mjpegSettings.data.value.serverPort))
             }.sortedBy { it.fullAddress },

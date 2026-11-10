@@ -610,8 +610,13 @@ internal class WebRtcStreamingService(
                     return
                 }
 
+                if (event.attempt == 0) {
+                    signalingTerminalError = false
+                    signalingRecoveryAttempts = 0
+                }
+
                 currentError.get()?.let { error ->
-                    if (error !is WebRtcError.NetworkError) {
+                    if (error !is WebRtcError.NetworkError && error !is WebRtcError.SignalingServerUnavailable) {
                         XLog.w(getLog("GetNonce", "Error present. Ignoring. [$error]"))
                         if (error is WebRtcError.PlayIntegrityError && error.isExpectedEnvironmentIssue()) {
                             XLog.i(getLog("GetNonce", "Expected Play Integrity environment issue. code=${error.code}."))
@@ -645,7 +650,7 @@ internal class WebRtcStreamingService(
                             networkRecovery.value = false
                             currentError.set(WebRtcError.UnknownError(cause))
                             sendEvent(WebRtcEvent.UpdateState)
-                        } else if (cause.isNonRetryable() || event.attempt >= 20) {
+                        } else if (cause.isNonRetryable()) {
                             if (cause.isConnectivityIssue()) networkAvailable.value = false
                             networkRecovery.value = false
                             if (isStreaming()) signalingTerminalError = true
@@ -657,7 +662,7 @@ internal class WebRtcStreamingService(
                         } else {
                             networkRecovery.value = isStreaming()
                             val attempt = event.attempt + 1
-                            val delay = min((2000L * (1.1).pow(attempt - 1)).toLong(), 15_000L)
+                            val delay = min((2000L * (1.1).pow(min(attempt, 20) - 1)).toLong(), 15_000L)
                             sendEvent(InternalEvent.GetNonce(attempt, event.forceTokenUpdate), delay)
                         }
                     }
@@ -699,15 +704,9 @@ internal class WebRtcStreamingService(
                             }
 
                             event.attempt >= 3 -> {
-                                XLog.i(this@WebRtcStreamingService.getLog("getToken", "Got error. Max attempts. Stopping: ${cause.message}"))
-                                networkAvailable.value = false
-                                networkRecovery.value = false
-                                if (isStreaming()) signalingTerminalError = true
-                                currentError.set(
-                                    if (isStreaming()) WebRtcError.SignalingServerUnavailable(cause.message, cause)
-                                    else cause
-                                )
-                                sendEvent(WebRtcEvent.UpdateState)
+                                XLog.i(this@WebRtcStreamingService.getLog("getToken", "Got error. Max attempts. Retrying nonce: ${cause.message}"))
+                                networkRecovery.value = isStreaming()
+                                sendEvent(InternalEvent.GetNonce(1, event.forceUpdate), 10_000L)
                             }
 
                             else -> {
@@ -752,18 +751,9 @@ internal class WebRtcStreamingService(
                 }
 
                 val attempt = ++signalingRecoveryAttempts
-                if (attempt > signalingRecoveryMaxAttempts) {
-                    XLog.w(getLog("RecoverSignaling", "Max attempts. reason=${event.reason}"))
-                    networkRecovery.value = false
-                    signalingTerminalError = true
-                    currentError.set(WebRtcError.SignalingServerUnavailable(event.reason, null))
-                    sendEvent(WebRtcEvent.UpdateState)
-                    return
-                }
-
                 networkRecovery.value = isStreaming()
                 currentError.set(null)
-                val delay = if (attempt == 1) 0L else min((2000L * (1.1).pow(attempt - 2)).toLong(), 15_000L)
+                val delay = if (attempt == 1) 0L else min((2000L * (1.1).pow(min(attempt, signalingRecoveryMaxAttempts) - 2)).toLong(), 15_000L)
                 XLog.i(getLog("RecoverSignaling", "Scheduling signaling recovery. attempt=$attempt delay_ms=$delay reason=${event.reason}"))
                 sendEvent(InternalEvent.GetNonce(0, event.forceTokenUpdate), delay)
             }

@@ -30,8 +30,10 @@ import androidx.lifecycle.compose.dropUnlessStarted
 import info.dvkr.screenstream.common.getAppSettingsIntent
 import info.dvkr.screenstream.common.module.StreamingModule
 import info.dvkr.screenstream.common.notification.NotificationHelper
+import info.dvkr.screenstream.common.settings.AppSettings
 import info.dvkr.screenstream.common.ui.DoubleClickProtection
 import info.dvkr.screenstream.common.ui.get
+import info.dvkr.screenstream.common.ui.mediaprojection.ScreenCaptureAutoConfirmState
 import info.dvkr.screenstream.common.ui.mediaprojection.ScreenCapturePermissionFlow
 import info.dvkr.screenstream.common.ui.mediaprojection.rememberScreenCaptureStartRequester
 import info.dvkr.screenstream.mjpeg.R
@@ -59,10 +61,12 @@ internal fun MjpegMainScreenUI(
     windowWidthSizeClass: StreamingModule.WindowWidthSizeClass,
     modifier: Modifier = Modifier,
     mjpegSettings: MjpegSettings = koinInject(),
+    appSettings: AppSettings = koinInject(),
     notificationHelper: NotificationHelper = koinInject()
 ) {
     val mjpegState = mjpegStateFlow.collectAsStateWithLifecycle()
     val mjpegSettingsState = mjpegSettings.data.collectAsStateWithLifecycle()
+    val appSettingsState = appSettings.data.collectAsStateWithLifecycle()
     val scope = rememberCoroutineScope()
     val screenCaptureStartRequester = rememberScreenCaptureStartRequester()
     val context = LocalContext.current
@@ -70,6 +74,19 @@ internal fun MjpegMainScreenUI(
     val settings = mjpegSettingsState.value
     val updateSettings: (MjpegSettings.Data.() -> MjpegSettings.Data) -> Unit = { transform ->
         scope.launch { mjpegSettings.updateData(transform) }
+    }
+
+    LaunchedEffect(state.isBusy, state.isStreaming, state.waitingCastPermission, appSettingsState.value.autoStartStream) {
+        if (appSettingsState.value.autoStartStream &&
+            !ScreenCaptureAutoConfirmState.autoStartConsumedForSession &&
+            !state.isStreaming &&
+            !state.isBusy &&
+            !state.waitingCastPermission &&
+            state.startAttemptId == null
+        ) {
+            ScreenCaptureAutoConfirmState.autoStartConsumedForSession = true
+            screenCaptureStartRequester.request()
+        }
     }
 
     BoxWithConstraints(modifier = modifier) {
@@ -192,7 +209,7 @@ internal fun MjpegMainScreenUI(
             modifier = Modifier
                 .padding(start = 16.dp, end = 16.dp, bottom = 8.dp)
                 .align(alignment = Alignment.BottomCenter),
-            enabled = state.isBusy.not(),
+            enabled = state.isStreaming || state.isBusy.not(),
             shape = MaterialTheme.shapes.medium,
             contentPadding = PaddingValues(start = 12.dp, top = 12.dp, bottom = 12.dp, end = 16.dp),
             elevation = ButtonDefaults.buttonElevation(

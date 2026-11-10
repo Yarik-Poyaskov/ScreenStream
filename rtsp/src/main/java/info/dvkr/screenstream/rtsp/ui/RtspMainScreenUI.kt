@@ -38,8 +38,10 @@ import info.dvkr.screenstream.common.getAppSettingsIntent
 import info.dvkr.screenstream.common.isPermissionGranted
 import info.dvkr.screenstream.common.module.StreamingModule
 import info.dvkr.screenstream.common.notification.NotificationHelper
+import info.dvkr.screenstream.common.settings.AppSettings
 import info.dvkr.screenstream.common.ui.DoubleClickProtection
 import info.dvkr.screenstream.common.ui.get
+import info.dvkr.screenstream.common.ui.mediaprojection.ScreenCaptureAutoConfirmState
 import info.dvkr.screenstream.common.ui.mediaprojection.ScreenCapturePermissionFlow
 import info.dvkr.screenstream.common.ui.mediaprojection.rememberScreenCaptureStartRequester
 import info.dvkr.screenstream.common.shouldShowPermissionRationale
@@ -66,10 +68,12 @@ internal fun RtspMainScreenUI(
     windowWidthSizeClass: StreamingModule.WindowWidthSizeClass,
     modifier: Modifier = Modifier,
     rtspSettings: RtspSettings = koinInject(),
+    appSettings: AppSettings = koinInject(),
     notificationHelper: NotificationHelper = koinInject()
 ) {
     val rtspState = rtspStateFlow.collectAsStateWithLifecycle()
     val rtspSettingsState = rtspSettings.data.collectAsStateWithLifecycle()
+    val appSettingsState = appSettings.data.collectAsStateWithLifecycle()
     val scope = rememberCoroutineScope()
     val screenCaptureStartRequester = rememberScreenCaptureStartRequester()
     val context = LocalContext.current
@@ -95,6 +99,23 @@ internal fun RtspMainScreenUI(
     }
     val updateSettings: (RtspSettings.Data.() -> RtspSettings.Data) -> Unit = { transform ->
         scope.launch { rtspSettings.updateData(transform) }
+    }
+
+    val mediaServerUrlError = selectedMode == RtspSettings.Values.Mode.CLIENT &&
+            runCatching { RtspUrl.parse(settings.serverAddress) }.isFailure
+
+    LaunchedEffect(state.isBusy, state.isStreaming, state.waitingCastPermission, mediaServerUrlError, appSettingsState.value.autoStartStream) {
+        if (appSettingsState.value.autoStartStream &&
+            !ScreenCaptureAutoConfirmState.autoStartConsumedForSession &&
+            !state.isStreaming &&
+            !state.isBusy &&
+            !mediaServerUrlError &&
+            !state.waitingCastPermission &&
+            state.startAttemptId == null
+        ) {
+            ScreenCaptureAutoConfirmState.autoStartConsumedForSession = true
+            screenCaptureStartRequester.request()
+        }
     }
 
     BoxWithConstraints(modifier = modifier) {
@@ -207,9 +228,6 @@ internal fun RtspMainScreenUI(
 
         val doubleClickProtection = remember { DoubleClickProtection.get() }
 
-        val mediaServerUrlError = selectedMode == RtspSettings.Values.Mode.CLIENT &&
-                runCatching { RtspUrl.parse(settings.serverAddress) }.isFailure
-
         Button(
             onClick = dropUnlessStarted {
                 doubleClickProtection.processClick {
@@ -223,7 +241,7 @@ internal fun RtspMainScreenUI(
             modifier = Modifier
                 .padding(start = 16.dp, end = 16.dp, bottom = 8.dp)
                 .align(alignment = Alignment.BottomCenter),
-            enabled = state.isBusy.not() && mediaServerUrlError.not(),
+            enabled = state.isStreaming || (state.isBusy.not() && mediaServerUrlError.not()),
             shape = MaterialTheme.shapes.medium,
             contentPadding = PaddingValues(start = 12.dp, top = 12.dp, bottom = 12.dp, end = 16.dp),
             elevation = ButtonDefaults.buttonElevation(

@@ -62,8 +62,15 @@ public fun AboutTabContent(
         )
 
         Text(
+            text = stringResource(id = R.string.app_tab_about_fork_developer_name),
+            modifier = Modifier.padding(horizontal = 16.dp, vertical = 4.dp),
+            style = MaterialTheme.typography.bodyLarge
+        )
+
+        Text(
             text = stringResource(id = R.string.app_tab_about_developer_name),
-            modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp)
+            modifier = Modifier.padding(horizontal = 16.dp, vertical = 4.dp),
+            style = MaterialTheme.typography.bodyMedium
         )
 
         Column(modifier = Modifier.width(IntrinsicSize.Max)) {
@@ -86,13 +93,23 @@ public fun AboutTabContent(
             }
 
             TextButton(
-                onClick = { context.openStringUrl("https://github.com/dkrivoruchko/ScreenStream") },
+                onClick = { context.openStringUrl("https://github.com/Yarik-Poyaskov/ScreenStream") },
                 modifier = Modifier
                     .padding(vertical = 4.dp)
                     .fillMaxWidth()
             ) {
                 Icon(painter = painterResource(R.drawable.github), contentDescription = null, modifier = Modifier.padding(end = 8.dp))
                 Text(text = stringResource(id = R.string.app_tab_about_app_sources), maxLines = 1)
+            }
+
+            TextButton(
+                onClick = { context.openStringUrl("https://github.com/dkrivoruchko/ScreenStream") },
+                modifier = Modifier
+                    .padding(vertical = 4.dp)
+                    .fillMaxWidth()
+            ) {
+                Icon(painter = painterResource(R.drawable.github), contentDescription = null, modifier = Modifier.padding(end = 8.dp))
+                Text(text = stringResource(id = R.string.app_tab_about_upstream_sources), maxLines = 1)
             }
 
             TextButton(

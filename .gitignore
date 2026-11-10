@@ -19,6 +19,7 @@ build/
 
 # Local configuration file (sdk path, etc)
 local.properties
+.android-sdk/
 fabric.properties
 google-services.json
 
@@ -37,5 +38,9 @@ captures/
 # Intellij
 *.iml
 .idea
+
+# Local notes and journals
+PROJECT_NOTES_AND_TODO.md
+SERVER_DEPLOYMENT_JOURNAL.md
 
 .kotlin/

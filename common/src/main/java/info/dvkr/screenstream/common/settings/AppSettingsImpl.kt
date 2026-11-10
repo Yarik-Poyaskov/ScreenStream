@@ -59,6 +59,15 @@ internal class AppSettingsImpl(context: Context) : AppSettings {
 
                 if (newSettings.screenCaptureEducationCompleted != AppSettings.Default.SCREEN_CAPTURE_EDUCATION_COMPLETED)
                     set(AppSettings.Key.SCREEN_CAPTURE_EDUCATION_COMPLETED, newSettings.screenCaptureEducationCompleted)
+
+                if (newSettings.startOnBoot != AppSettings.Default.START_ON_BOOT)
+                    set(AppSettings.Key.START_ON_BOOT, newSettings.startOnBoot)
+
+                if (newSettings.autoStartStream != AppSettings.Default.AUTO_START_STREAM)
+                    set(AppSettings.Key.AUTO_START_STREAM, newSettings.autoStartStream)
+
+                if (newSettings.enableCameraOverlay != AppSettings.Default.ENABLE_CAMERA_OVERLAY)
+                    set(AppSettings.Key.ENABLE_CAMERA_OVERLAY, newSettings.enableCameraOverlay)
             }
         }
         Unit
@@ -69,5 +78,8 @@ internal class AppSettingsImpl(context: Context) : AppSettings {
         nightMode = this[AppSettings.Key.NIGHT_MODE] ?: AppSettings.Default.NIGHT_MODE,
         dynamicTheme = this[AppSettings.Key.DYNAMIC_THEME] ?: AppSettings.Default.DYNAMIC_THEME,
         screenCaptureEducationCompleted = this[AppSettings.Key.SCREEN_CAPTURE_EDUCATION_COMPLETED] ?: AppSettings.Default.SCREEN_CAPTURE_EDUCATION_COMPLETED,
+        startOnBoot = this[AppSettings.Key.START_ON_BOOT] ?: AppSettings.Default.START_ON_BOOT,
+        autoStartStream = this[AppSettings.Key.AUTO_START_STREAM] ?: AppSettings.Default.AUTO_START_STREAM,
+        enableCameraOverlay = this[AppSettings.Key.ENABLE_CAMERA_OVERLAY] ?: AppSettings.Default.ENABLE_CAMERA_OVERLAY,
     )
 }

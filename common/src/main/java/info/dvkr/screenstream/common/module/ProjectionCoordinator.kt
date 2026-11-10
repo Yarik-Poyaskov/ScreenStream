@@ -255,6 +255,7 @@ public class ProjectionCoordinator(
                         when {
                             session != null && session.generation == generation && session.mediaProjection === projection -> {
                                 activeSession = null
+                                ProjectionStateHolder.setProjecting(false)
                                 XLog.i(getLog("MediaProjection.Callback[$tag]", "onStop. g=$generation, state=active"))
                                 true
                             }
@@ -309,6 +310,7 @@ public class ProjectionCoordinator(
                 } else {
                     activeSession = ActiveSession(generation = generation, mediaProjection = projection, callback = callback)
                     clearStartingState()
+                    ProjectionStateHolder.setProjecting(true)
                     true
                 }
             }
@@ -338,6 +340,7 @@ public class ProjectionCoordinator(
             val current = activeSession
             activeSession = null
             clearStartingState()
+            ProjectionStateHolder.setProjecting(false)
             current
         }
         if (session == null) {

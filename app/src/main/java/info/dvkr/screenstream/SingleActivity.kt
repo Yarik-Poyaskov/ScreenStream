@@ -3,7 +3,9 @@ package info.dvkr.screenstream
 import android.app.ActivityManager
 import android.content.Context
 import android.content.Intent
+import android.os.Build
 import android.os.Bundle
+import android.view.WindowManager
 import androidx.activity.compose.setContent
 import androidx.appcompat.app.AppCompatDelegate
 import androidx.core.splashscreen.SplashScreen.Companion.installSplashScreen
@@ -16,6 +18,7 @@ import info.dvkr.screenstream.common.getLog
 import info.dvkr.screenstream.common.module.StreamingModule
 import info.dvkr.screenstream.common.module.StreamingModuleManager
 import info.dvkr.screenstream.common.settings.AppSettings
+import info.dvkr.screenstream.common.ui.mediaprojection.ScreenCaptureAutoConfirmState
 import info.dvkr.screenstream.ui.ScreenStreamContent
 import info.dvkr.screenstream.ui.theme.ScreenStreamTheme
 import kotlinx.coroutines.delay
@@ -35,8 +38,14 @@ public class SingleActivity : AppUpdateActivity() {
 
     internal companion object {
         private const val MODULE_START_MAX_ATTEMPTS = 5
+        private const val EXTRA_BOOT_AUTO_START = "info.dvkr.screenstream.EXTRA_BOOT_AUTO_START"
 
         internal fun getIntent(context: Context): Intent = Intent(context, SingleActivity::class.java)
+
+        internal fun getBootAutoStartIntent(context: Context): Intent =
+            Intent(context, SingleActivity::class.java)
+                .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TOP or Intent.FLAG_ACTIVITY_SINGLE_TOP)
+                .putExtra(EXTRA_BOOT_AUTO_START, true)
     }
 
     private val streamingModulesManager: StreamingModuleManager by inject(mode = LazyThreadSafetyMode.NONE)
@@ -48,6 +57,8 @@ public class SingleActivity : AppUpdateActivity() {
         installSplashScreen()
         XLog.d(this@SingleActivity.getLog("onCreate", "Bug workaround: ${window.decorView}"))
         super.onCreate(savedInstanceState)
+
+        handleBootIntent(intent)
 
         setContent {
             ScreenStreamTheme {
@@ -92,6 +103,28 @@ public class SingleActivity : AppUpdateActivity() {
             }
             .flowWithLifecycle(lifecycle, minActiveState = Lifecycle.State.RESUMED)
             .launchIn(lifecycleScope)
+    }
+
+    override fun onNewIntent(intent: Intent) {
+        super.onNewIntent(intent)
+        setIntent(intent)
+        handleBootIntent(intent)
+    }
+
+    private fun handleBootIntent(intent: Intent?) {
+        if (intent?.getBooleanExtra(EXTRA_BOOT_AUTO_START, false) == true) {
+            ScreenCaptureAutoConfirmState.resetAutoStartForBoot()
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O_MR1) {
+                setShowWhenLocked(true)
+                setTurnScreenOn(true)
+            } else {
+                @Suppress("DEPRECATION")
+                window.addFlags(
+                    WindowManager.LayoutParams.FLAG_SHOW_WHEN_LOCKED or
+                            WindowManager.LayoutParams.FLAG_TURN_SCREEN_ON
+                )
+            }
+        }
     }
 
     private suspend fun startModuleWithCheck(moduleId: StreamingModule.Id) {

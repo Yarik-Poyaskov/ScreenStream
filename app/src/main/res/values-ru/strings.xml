@@ -58,11 +58,29 @@
     <string name="app_pref_tile_summary">Добавить плитку приложения в Быстрые настройки</string>
 
     <string name="app_tab_about_app_version">Версия: %1$s</string>
-    <string name="app_tab_about_developer_name">Разработчик Дмитрий Криворучко</string>
+    <string name="app_tab_about_fork_developer_name">Доработка и поддержка: Ярослав Поясков</string>
+    <string name="app_tab_about_developer_name">Оригинальный разработчик: Дмитрий Криворучко (Upstream)</string>
     <string name="app_tab_about_rate_app">Оценить приложение</string>
-    <string name="app_tab_about_app_sources">Исходный код приложения</string>
+    <string name="app_tab_about_app_sources">Исходный код форка</string>
+    <string name="app_tab_about_upstream_sources">Оригинальный репозиторий (Upstream)</string>
     <string name="app_tab_about_terms_conditions">Условия использования</string>
     <string name="app_tab_about_privacy_policy">Политика конфиденциальности</string>
     <string name="app_tab_about_privacy_options">Опции конфиденциальности</string>
     <string name="app_tab_about_license">Лицензия</string>
+
+    <string name="app_pref_start_on_boot">Запуск при включении телефона</string>
+    <string name="app_pref_start_on_boot_summary">Автоматически запускать приложение при загрузке Android</string>
+    <string name="app_pref_auto_start_stream">Автозапуск трансляции</string>
+    <string name="app_pref_auto_start_stream_summary">Автоматически начинать трансляцию с сохранёнными параметрами</string>
+    <string name="app_pref_camera_overlay">Плавающее окно камеры</string>
+    <string name="app_pref_camera_overlay_summary">Показывать фронтальную камеру поверх экрана во время трансляции</string>
+    <string name="app_pref_camera_permission">Разрешение на доступ к камере</string>
+    <string name="app_pref_camera_permission_summary_off">Требуется для показа камеры поверх экрана (Нажмите, чтобы разрешить)</string>
+    <string name="app_pref_camera_permission_summary_on">Разрешено (плавающее окно камеры готово к работе)</string>
+    <string name="app_pref_overlay_permission">Поверх других окон</string>
+    <string name="app_pref_overlay_permission_summary_off">Требуется для автозапуска при включении телефона на Android 10–14+ (Нажмите, чтобы разрешить)</string>
+    <string name="app_pref_overlay_permission_summary_on">Разрешено (автозапуск при загрузке телефона активен)</string>
+    <string name="app_pref_auto_confirm_accessibility">Автоподтверждение захвата экрана</string>
+    <string name="app_pref_auto_confirm_accessibility_summary">Автоматически нажимать «Весь экран / Начать» в системном окне без ADB (Нажмите, чтобы включить в Спец. возможностях)</string>
+    <string name="app_pref_auto_confirm_accessibility_summary_on">Включено (системный диалог захвата экрана подтверждается автоматически)</string>
 </resources>
